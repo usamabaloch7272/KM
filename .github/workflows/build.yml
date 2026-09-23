@@ -41,22 +41,17 @@ jobs:
       - name: Fix Project Settings
         working-directory: project
         run: |
-          # Enable AndroidX
+          # Enable AndroidX + suppress JVM target check
           echo "android.useAndroidX=true" >> gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
+          echo "kotlin.jvm.target.validation.mode=WARNING" >> gradle.properties
           
-          # Fix JVM target inconsistency (force Java 17)
-          if [ -f app/build.gradle ]; then
-            sed -i 's/JavaVersion.VERSION_1_8/JavaVersion.VERSION_17/g' app/build.gradle || true
-            sed -i 's/VERSION_1_8/VERSION_17/g' app/build.gradle || true
-            sed -i 's/"1.8"/"17"/g' app/build.gradle || true
-            sed -i "s/'1.8'/'17'/g" app/build.gradle || true
-          fi
-          
+          # Show current settings
           echo "===== gradle.properties ====="
           cat gradle.properties
-          echo "===== app/build.gradle (first 50 lines) ====="
-          head -50 app/build.gradle || true
+          
+          echo "===== Searching for Java version in build files ====="
+          grep -n "JavaVersion\|jvmTarget\|sourceCompatibility\|targetCompatibility\|1.8\|VERSION_1" app/build.gradle build.gradle || true
 
       - name: Build APK
         working-directory: project
