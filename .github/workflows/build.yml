@@ -18,6 +18,8 @@ jobs:
         run: |
           mkdir project
           unzip -q MyJobKM_Full_v2.zip -d project
+          echo "===== Project structure ====="
+          find project -maxdepth 3 -type f | head -30
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -38,27 +40,42 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Fix Project Settings
+      - name: Fix Everything
         working-directory: project
         run: |
-          # Enable AndroidX + suppress JVM target check
+          # 1. Enable AndroidX + suppress JVM target error
           echo "android.useAndroidX=true" >> gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
           echo "kotlin.jvm.target.validation.mode=WARNING" >> gradle.properties
+
+          # 2. Fix missing AlertDialog import
+          MAIN_FILE=$(find . -name "MainActivity.kt" | head -1)
           
-          # Show current settings
+          if [ -n "$MAIN_FILE" ]; then
+            echo "Found MainActivity at: $MAIN_FILE"
+            
+            # Add import if missing
+            if ! grep -q "import.*AlertDialog" "$MAIN_FILE"; then
+              sed -i '1a import androidx.appcompat.app.AlertDialog' "$MAIN_FILE"
+              echo "Added AlertDialog import"
+            fi
+            
+            echo "===== First 25 lines of MainActivity.kt ====="
+            head -25 "$MAIN_FILE"
+          else
+            echo "WARNING: MainActivity.kt not found"
+          fi
+
           echo "===== gradle.properties ====="
           cat gradle.properties
-          
-          echo "===== Searching for Java version in build files ====="
-          grep -n "JavaVersion\|jvmTarget\|sourceCompatibility\|targetCompatibility\|1.8\|VERSION_1" app/build.gradle build.gradle || true
 
       - name: Build APK
         working-directory: project
-        run: gradle assembleDebug --no-daemon
+        run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: MyJobKM-APK
           path: project/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
