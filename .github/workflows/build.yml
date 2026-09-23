@@ -38,12 +38,25 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Enable AndroidX
+      - name: Fix Project Settings
         working-directory: project
         run: |
+          # Enable AndroidX
           echo "android.useAndroidX=true" >> gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
+          
+          # Fix JVM target inconsistency (force Java 17)
+          if [ -f app/build.gradle ]; then
+            sed -i 's/JavaVersion.VERSION_1_8/JavaVersion.VERSION_17/g' app/build.gradle || true
+            sed -i 's/VERSION_1_8/VERSION_17/g' app/build.gradle || true
+            sed -i 's/"1.8"/"17"/g' app/build.gradle || true
+            sed -i "s/'1.8'/'17'/g" app/build.gradle || true
+          fi
+          
+          echo "===== gradle.properties ====="
           cat gradle.properties
+          echo "===== app/build.gradle (first 50 lines) ====="
+          head -50 app/build.gradle || true
 
       - name: Build APK
         working-directory: project
